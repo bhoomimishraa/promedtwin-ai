@@ -7,6 +7,29 @@ cohort analytics, and PDF-style patient reports.
 All data is synthetic. This is a demonstration build, not a certified medical
 device.
 
+## Screenshots
+
+### Login / Authentication
+![Authentication](authentication.png)
+
+### Dashboard
+![Dashboard](dashboard.png)
+
+### Digital Twin
+![Digital Twin](DigitalTwin.png)
+
+### Predictions & Explainable AI
+![Predictions](predictions.png)
+
+### Risk & Early Warning / Timeline
+![Risk and Timeline](Risk%20and%20Timeline.png)
+
+### Cohort Analytics
+![Cohort Analytics](Cohort%20Analytics.png)
+
+### Reports & PDF Export
+![Reports](Reports.png)
+
 ## Files
 
 - `index.html` — the entire application (HTML/CSS/JS). Fully static, no
