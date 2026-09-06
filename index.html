@@ -1670,91 +1670,6 @@ function PatientReport({patient}){
   );
 }
 
-/* ============================= AI ASSISTANT ============================= */
-function ClinicalAssistant({patient, role}){
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const scrollRef = useRef(null);
-
-  useEffect(()=>{ if(scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages, loading]);
-
-  function buildContext(){
-    const risk = computeRisk(patient);
-    const ranked = rankTreatments(patient);
-    const traj = computeRecoveryTrajectory(patient);
-    return [
-      'Patient: '+patient.name+' ('+patient.id+'), age '+patient.age+', '+patient.gender+'.',
-      'Diagnosis: '+patient.diagnosis+'. Comorbidities: '+(patient.comorbidities.join(', ')||'none')+'.',
-      'Vitals: HR '+patient.vitals.hr+' bpm, BP '+patient.vitals.sbp+'/'+patient.vitals.dbp+', SpO2 '+patient.vitals.spo2+'%, Temp '+patient.vitals.temp+'C.',
-      'Key labs: HbA1c '+patient.labs.hba1c+', Creatinine '+patient.labs.creatinine+', eGFR '+patient.labs.egfr+', CRP '+patient.labs.crp+', Hb '+patient.labs.hemoglobin+'.',
-      'Treatment adherence: '+pct(patient.adherence)+'%. Composite risk: '+risk.score+'/100 ('+risk.level+'). Active warnings: '+risk.factors.join('; ')+'.',
-      'Top-ranked treatment: '+ranked[0].name+' (predicted response '+pct(ranked[0].probability)+'%, confidence '+pct(ranked[0].confidence)+'%).',
-      'Predicted 12-week recovery: '+traj[traj.length-1].predicted+'% (range '+traj[traj.length-1].lower+'-'+traj[traj.length-1].upper+'%).'
-    ].join(' ');
-  }
-
-  async function send(){
-    const text = input.trim();
-    if(!text || loading) return;
-    const newMsgs = [...messages, {role:'user', content:text}];
-    setMessages(newMsgs);
-    setInput('');
-    setLoading(true);
-    setError(null);
-    try{
-      const system = 'You are the ProMedTwin Clinical AI Assistant, embedded in an explainable clinical decision support demo. '+
-        'You are speaking with a '+role+'. Ground every answer in the following synthetic digital-twin data for the patient currently in context, '+
-        'and be explicit when you are inferring beyond it: '+buildContext()+
-        ' Keep answers concise, clinically literate, and always note that this is a demonstration system using synthetic data, not a source of real medical advice. '+
-        (role==='patient' ? 'Explain things in plain, reassuring, non-jargon language suitable for a patient.' : 'You may use clinical terminology suitable for a clinician.');
-
-      const response = await fetch('/api/chat', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          model:'claude-sonnet-4-6',
-          max_tokens:1000,
-          system: system,
-          messages: newMsgs.map(m=>({role:m.role, content:m.content}))
-        })
-      });
-      if(!response.ok){
-        throw new Error('Proxy returned status '+response.status);
-      }
-      const data = await response.json();
-      const text2 = (data.content||[]).map(b=>b.text||'').join('\n').trim() || "I wasn't able to generate a response just now.";
-      setMessages(m=>[...m, {role:'assistant', content:text2}]);
-    }catch(e){
-      setError('The assistant backend is not reachable. If you are running this outside Claude.ai, make sure your /api/chat proxy is deployed with a valid ANTHROPIC_API_KEY.');
-    }finally{
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Panel title="Clinical AI assistant" subtitle={'Grounded in the digital twin of '+patient.name+' — synthetic data, for demonstration only'}>
-      <div className="chat-wrap">
-        <div className="chat-msgs" ref={scrollRef}>
-          <div className="msg system-note">Ask about this patient's risk, recommended treatment, recovery outlook, or what the model is basing a prediction on.</div>
-          {messages.map((m,i)=>(
-            <div className={'msg '+m.role} key={i}>{m.content}</div>
-          ))}
-          {loading && <div className="msg assistant">Thinking…</div>}
-          {error && <div className="msg system-note" style={{color:'var(--crimson)'}}>{error}</div>}
-        </div>
-        <div className="chat-input">
-          <textarea placeholder="Ask the clinical assistant…" value={input}
-            onChange={e=>setInput(e.target.value)}
-            onKeyDown={e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } }} />
-          <button disabled={loading || !input.trim()} onClick={send}>Send</button>
-        </div>
-      </div>
-    </Panel>
-  );
-}
-
 /* ============================= APP SHELL ============================= */
 const NAV_DOCTOR = [
   {key:'dashboard', label:'Dashboard', icon:'◆'},
@@ -1763,16 +1678,14 @@ const NAV_DOCTOR = [
   {key:'predictions', label:'Predictions', icon:'▲'},
   {key:'risk', label:'Risk & Timeline', icon:'⚑'},
   {key:'cohort', label:'Cohort Analytics', icon:'▦'},
-  {key:'reports', label:'Reports', icon:'⬇'},
-  {key:'assistant', label:'AI Assistant', icon:'✦'}
+  {key:'reports', label:'Reports', icon:'⬇'}
 ];
 const NAV_PATIENT = [
   {key:'dashboard', label:'My Dashboard', icon:'◆'},
   {key:'twin', label:'My Digital Twin', icon:'◎'},
   {key:'predictions', label:'My Predictions', icon:'▲'},
   {key:'risk', label:'Risk & Timeline', icon:'⚑'},
-  {key:'reports', label:'My Report', icon:'⬇'},
-  {key:'assistant', label:'AI Assistant', icon:'✦'}
+  {key:'reports', label:'My Report', icon:'⬇'}
 ];
 
 function App(){
@@ -1819,8 +1732,7 @@ function App(){
     predictions: 'Predictions & Explainability',
     risk: 'Risk, Early Warning & Timeline',
     cohort: 'Cohort Analytics',
-    reports: 'Reports & Export',
-    assistant: 'Clinical AI Assistant'
+    reports: 'Reports & Export'
   };
 
   return (
@@ -1914,8 +1826,6 @@ function App(){
           {section==='cohort' && user.role==='doctor' && <CohortAnalytics patients={patients} />}
 
           {section==='reports' && <PatientReport patient={patient} />}
-
-          {section==='assistant' && <ClinicalAssistant patient={patient} role={user.role} />}
         </div>
       </div>
     </div>
