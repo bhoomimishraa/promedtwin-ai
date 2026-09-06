@@ -1,9 +1,0 @@
-{
-  "name": "promedtwin-ai",
-  "version": "1.0.0",
-  "private": true,
-  "description": "ProMedTwin AI - explainable clinical decision support demo",
-  "engines": {
-    "node": ">=18"
-  }
-}
